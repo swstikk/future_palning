@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Quantum Bioinformatics Roadmap</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #07080f;
+      --panel: #0e0f1a;
+      --border: #1c1d30;
+      --accent: #6d28d9;
+      --accent-dim: rgba(109,40,217,0.15);
+      --cyan: #06b6d4;
+      --text: #dde3f0;
+      --muted: #4a5270;
+      --sidebar-w: 260px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Segoe UI', system-ui, sans-serif; }
+
+    /* ──────── LAYOUT ──────── */
+    #app { display: flex; height: 100vh; width: 100vw; }
+
+    /* ──────── SIDEBAR ──────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease;
+      overflow: hidden;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    #sidebar.collapsed { width: 0; border-right: none; }
+
+    .sidebar-header {
+      padding: 18px 16px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-header h2 {
+      font-size: 0.82rem;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .phase-list { padding: 10px 0; overflow-y: auto; flex: 1; }
+
+    .phase-entry {
+      padding: 8px 16px;
+      border-left: 2px solid transparent;
+      white-space: nowrap;
+      font-size: 0.78rem;
+      color: #8898b8;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .phase-entry.active { border-left-color: var(--accent); color: var(--text); background: var(--accent-dim); }
+
+    .dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+    .d-bridge  { background:#1e3a5f; }
+    .d-math    { background:#1a3a5c; }
+    .d-phys    { background:#3d1f5c; }
+    .d-code    { background:#1e4a1a; }
+    .d-qc      { background:#5c3d00; }
+    .d-app     { background:#5c1a1a; }
+    .d-osc     { background:#6d0000; border:1px solid #cc2222; }
+
+    .legend-section {
+      padding: 14px 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.74rem;
+    }
+    .legend-section h3 { color: var(--muted); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+    .legend-item { display:flex; align-items:center; gap:8px; margin-bottom:6px; white-space: nowrap; color: #8898b8; }
+
+    /* ──────── MAIN AREA ──────── */
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+    /* ──────── TOP BAR ──────── */
+    #topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 14px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+      flex-shrink: 0;
+    }
+
+    #toggle-sidebar {
+      background: none; border: 1px solid var(--border);
+      color: var(--text); padding: 5px 9px; border-radius: 5px;
+      cursor: pointer; font-size: 0.85rem; line-height: 1;
+      transition: border-color 0.15s;
+    }
+    #toggle-sidebar:hover { border-color: var(--accent); }
+
+    .title-badge {
+      font-size: 0.82rem;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .spacer { flex: 1; }
+
+    .zoom-controls { display: flex; gap: 6px; align-items: center; }
+
+    .zb {
+      background: var(--panel); border: 1px solid var(--border);
+      color: var(--text); padding: 4px 12px; border-radius: 5px;
+      cursor: pointer; font-size: 0.78rem; transition: all 0.15s;
+    }
+    .zb:hover { border-color: var(--accent); color: #a78bfa; }
+
+    #zoom-level { font-size: 0.72rem; color: var(--muted); min-width: 36px; text-align: center; }
+
+    .hint { font-size: 0.68rem; color: var(--muted); padding: 0 6px; }
+
+    /* ──────── DIAGRAM CANVAS ──────── */
+    #canvas {
+      flex: 1;
+      overflow: auto;
+      cursor: grab;
+      user-select: none;
+      position: relative;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(109,40,217,0.04) 0%, transparent 60%),
+        radial-gradient(circle at 80% 70%, rgba(6,182,212,0.04) 0%, transparent 60%),
+        var(--bg);
+    }
+    #canvas:active { cursor: grabbing; }
+
+    #wrapper {
+      display: inline-block;
+      padding: 48px 56px;
+      transform-origin: top left;
+      transition: transform 0.12s ease;
+      min-width: 100%;
+    }
+
+    /* Mermaid overrides */
+    .mermaid svg { max-width: none !important; }
+
+    /* ──────── FULLSCREEN FOCUS MODE ──────── */
+    body.focus-mode #sidebar { width: 0; border-right: none; }
+    body.focus-mode #topbar { opacity: 0; pointer-events: none; height: 0; padding: 0; overflow: hidden; border: none; }
+
+    /* ──────── SCROLL INDICATOR ──────── */
+    #hint-overlay {
+      position: absolute; bottom: 18px; right: 18px;
+      background: rgba(14,15,26,0.9); border: 1px solid var(--border);
+      border-radius: 8px; padding: 10px 14px; font-size: 0.7rem;
+      color: var(--muted); pointer-events: none;
+      transition: opacity 0.5s;
+    }
+    #hint-overlay span { display:block; margin-bottom:3px; }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <h2>⚛ QC-Bio Roadmap</h2>
+    </div>
+
+    <div class="phase-list">
+      <div class="phase-entry active"><div class="dot d-bridge"></div>Ph0 — Bridge (Wk 1-2)</div>
+      <div class="phase-entry"><div class="dot d-math"></div>Ph1 — Math (Wk 3-10)</div>
+      <div class="phase-entry"><div class="dot d-phys"></div>Ph1 — Physics (Wk 3-10)</div>
+      <div class="phase-entry"><div class="dot d-qc"></div>Ph2 — QC Theory (Wk 11-18)</div>
+      <div class="phase-entry"><div class="dot d-qc"></div>Ph3 — Algorithms (Wk 19-26)</div>
+      <div class="phase-entry"><div class="dot d-app"></div>Ph4 — VQE (Wk 27-36)</div>
+      <div class="phase-entry"><div class="dot d-app"></div>Ph5 — QML + Bio (Mo 10-24)</div>
+      <div class="phase-entry"><div class="dot d-osc"></div>OSC — Open Source Gate</div>
+    </div>
+
+    <div class="legend-section">
+      <h3>Node Types</h3>
+      <div class="legend-item"><div class="dot d-math"></div>[MATH] Mathematics</div>
+      <div class="legend-item"><div class="dot d-phys"></div>[PHYS] Physics</div>
+      <div class="legend-item"><div class="dot d-code"></div>[CODE] Qiskit / Python</div>
+      <div class="legend-item"><div class="dot d-qc"></div>[QC] Quantum Theory</div>
+      <div class="legend-item"><div class="dot d-app"></div>[APP] Applications</div>
+      <div style="margin-top:10px;color:#4a5270;line-height:1.7">
+        ★ = ML Overlap<br>
+        🧬 = Bio Link<br>
+        ⛔ = Blocker node<br>
+        ⚡ = Parallel track
+      </div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <div id="main">
+
+    <!-- TOP BAR -->
+    <div id="topbar">
+      <button id="toggle-sidebar" title="Toggle sidebar">☰</button>
+      <span class="title-badge">Quantum Bioinformatics Execution Tree</span>
+      <span class="spacer"></span>
+      <div class="zoom-controls">
+        <button class="zb" onclick="zoom(1.2)">＋</button>
+        <button class="zb" onclick="zoom(0.83)">－</button>
+        <span id="zoom-level">100%</span>
+        <button class="zb" onclick="resetZoom()">Reset</button>
+        <button class="zb" onclick="fitScreen()">Fit</button>
+        <button class="zb" onclick="toggleFocus()" title="Focus mode (hides all chrome)">⛶ Focus</button>
+      </div>
+      <span class="hint">Scroll = zoom · Drag = pan</span>
+    </div>
+
+    <!-- CANVAS -->
+    <div id="canvas">
+      <div id="wrapper">
+        <div class="mermaid">
+%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#1a3a5c','primaryTextColor': '#dde3f0','primaryBorderColor': '#2a5a8c','lineColor': '#3a4060','background': '#07080f','fontSize': '13px','edgeLabelBackground':'#0e0f1a'}}}%%
+flowchart TD
+
+%% PHASE 0
+P0B["[MATH] P0.1\nComplex Numbers Intro\n(a+bi, Argand, modulus)\n10th → QM bridge"]
+P0B --> M1A
+
+%% MATH TRACK
+M1A["[MATH] M1.1\nComplex Numbers Full\n(Polar, Euler e^iθ, De Moivre)\n🧬 NMR spectroscopy"]
+M1B["[MATH] M1.2\nDerivatives & Partial ∂\n(Chain rule, ∂f/∂x)\n★ ML: Gradient Descent"]
+M1C["[MATH] M1.3\nIntegration & ODEs\n(∫, u-sub, dy/dt=ky)\n🧬 Enzyme kinetics"]
+M1A --> M2A
+M1B --> M1C
+M1C --> M2A
+
+M2A["[MATH] M2.1\nVectors & Vector Spaces\n(Basis, span, ℂⁿ)\n★ ML: Feature vectors"]
+M2B["[MATH] M2.2\nMatrices & Operations\n(A·B, transpose, A†)\n★ ML: NN forward pass"]
+M2C["[MATH] M2.3\nSpecial Matrices\n(Hermitian, Unitary, Paulis)\n⛔ BLOCKER for QC"]
+M2A --> M2B
+M2B --> M2C
+M2C --> M3A
+
+M3A["[MATH] M3.1\nEigenvalues & Eigenvectors\n(Char. eq, spectral thm)\n★ ML: PCA | 🧬 Energy levels"]
+M3B["[MATH] M3.2\nInner Products\n(ℂⁿ dot product, Gram-Schmidt)\n★ ML: Kernels, cosine sim"]
+M3C["[MATH] M3.3\nTensor Products ⊗\n(Kronecker, 2ⁿ scaling)\n🧬 Protein electron cloud"]
+M3A --> M3B
+M3B --> M3C
+M3C --> M4A
+
+M4A["[MATH] M4.1\nHilbert Spaces\n(Axioms, completeness Σ|eᵢ⟩⟨eᵢ|=I)"]
+M4B["[MATH] M4.2\nProbability & Stats\n(E[X], Born rule, shot noise)\n★ ML: Bayes | 🧬 Gene expr"]
+M4C["[MATH] M4.3\nODEs → Schrödinger\n(ψ(t)=ψ₀e^(-iEt/ℏ))\n🧬 Population dynamics"]
+M4A --> QC1A
+M4B --> QC1A
+M4C --> Ph2A
+
+%% PHYSICS TRACK
+P1A["[PHYS] Ph1.1\nClassical Mechanics\n(KE=p²/2m, H=T+V)\n⚡ PARALLEL with M1"]
+Ph1B["[PHYS] Ph1.2\nHamiltonian Mechanics\n(H generator, Poisson→commutator)\n🧬 Force fields"]
+Ph1C["[PHYS] Ph1.3\nWave Mechanics\n(Superposition, de Broglie, nodes)\n🧬 DNA UV absorption"]
+P1A --> Ph1B
+Ph1B --> Ph1C
+Ph1C --> Ph2A
+
+Ph2A["[PHYS] Ph2.1\nSchrödinger Equation\n(TDSE+TISE, |ψ|², particle-in-box)\n⛔ needs M4.3 | 🧬 Orbitals"]
+Ph2B["[PHYS] Ph2.2\nQuantum Postulates\n(6 postulates, commutators [A,B])\n⛔ BLOCKER for QC"]
+Ph2C["[PHYS] Ph2.3\nDirac Notation\n(Bra⟨ψ|, Ket|ψ⟩, ⟨ψ|H|ψ⟩)\n⛔ BLOCKER all QC"]
+Ph2A --> Ph2B
+Ph2B --> Ph2C
+Ph2C --> QC1A
+
+%% CODE TRACK
+C1A["[CODE] C1.1\nNumPy Quantum Ops\n(linalg.eig, np.kron, A†)\n★ ML Overlap"]
+M2C --> C1A
+C1A --> C2A
+
+%% PHASE 2 QC
+QC1A["[QC] QC1.1\nQubits & Bloch Sphere\n(α|0⟩+β|1⟩, global/relative phase)"]
+QC1B["[QC] QC1.2\nQuantum Gates\n(X,Y,Z,H,Rx,Ry,Rz,CNOT,CZ)\n(unitary, universal set)"]
+QC1C["[QC] QC1.3\nMeasurement\n(Born rule collapse, basis choice, shots)"]
+QC1D["[QC] QC1.4\nEntanglement\n(Bell states, Schmidt decomp)\n🧬 Electron correlation"]
+QC1A --> QC1B
+QC1B --> QC1C
+QC1C --> QC1D
+QC1D --> QC2A
+
+C2A["[CODE] C2.1\nQiskit Basics\n(QuantumCircuit, AerSimulator, Statevector)"]
+C2B["[CODE] C2.2\nQiskit Simulators\n(Statevector vs QASM, shot noise)"]
+C2C["[CODE] C2.3\nParameterized Circuits\n(ParameterVector, param-shift ∂E/∂θₖ)\n→ THIS = VQE Ansatz"]
+QC1B --> C2A
+C2A --> C2B
+C2B --> C2C
+C2C --> QC2A
+
+%% PHASE 3 ALGORITHMS
+QC2A["[QC] QC2.1\nCircuit Complexity\n(Depth, 2-qubit gate cost, transpile)"]
+QC2B["[QC] QC2.2\nVariational Principle\n(E_trial≥E₀, Rayleigh-Ritz proof)\n⛔ BLOCKER → VQE | 🧬 Orbitals"]
+QC2C["[QC] QC2.3\nAnsatz Design\n(HEA, UCCSD, EfficientSU2, barren plateau)"]
+QC2D["[QC] QC2.4\nClassical Optimizers\n(COBYLA, SPSA, param-shift)\n★ ML: Adam = same"]
+QC2A --> QC2B
+QC2B --> QC2C
+QC2C --> QC2D
+QC2D --> APP1A
+
+QC3A["[QC] QC3.1\nGrover's Algorithm\n(Oracle, diffuser, O(√N))\n🧬 DNA k-mer search"]
+QC2B --> QC3A
+QC3A --> APP2A
+
+%% PHASE 4 VQE
+APP1A["[APP] A1.1\nMolecular Hamiltonian\n(Born-Opp, 2nd quantization, STO-3G)\n🧬 Electronic structure"]
+APP1B["[APP] A1.2\nJordan-Wigner Mapping\n(Fermionic→Pauli, SparsePauliOp)\n🧬 π-electron encoding"]
+APP1C["[APP] ⭐ A1.3\nVQE MASTER CHECKPOINT\n(H₂ from scratch, <1.6 mHa error)\n⛔ GATE: do not pass without"]
+APP1D["[APP] A1.4\nQiskit Nature Pipeline\n(PySCF, H₂→LiH→H₂O, bond curves)"]
+APP1A --> APP1B
+APP1B --> APP1C
+APP1C --> APP1D
+APP1D --> APP2A
+
+%% PHASE 5 QML+BIO
+APP2A["[APP] A2.1\nQML Foundations\n(Angle/amplitude encoding, QSVM, ZZ-map)\n★ ML: SVM kernels"]
+APP2B["[APP] A2.2\nQuantum Neural Networks\n(PennyLane QNode, hybrid backprop)\n★ ML: NN architecture"]
+APP2C["[APP] A2.3\nHybrid Quantum-Classical\n(PyTorch+PennyLane, end-to-end train)"]
+APP2A --> APP2B
+APP2B --> APP2C
+APP2C --> APP3A
+
+APP3A["[APP] A3.1\nGrover Genomic Search\n(DNA k-mer oracle, oracle circuit)\n🧬 Genome database"]
+APP3B["[APP] A3.2\nGene Expression QNN\n(GEO dataset, regression, log₂-norm)\n🧬 Gene prediction"]
+APP3C["[APP] A3.3\nMutation Classifier\n(ClinVar, QSVM, F1/AUC-ROC)\n🧬 Variant pathogenicity"]
+APP3D["[APP] A3.4\nMolecular Docking\n(VQE + drug-gene interaction)\n🧬 Drug-gene binding"]
+APP3A --> APP3B
+APP3B --> APP3C
+APP3C --> APP3D
+
+OSC["[CODE] ⭐ OPEN SOURCE GATE\nMerged PR in Qiskit/PennyLane\n= Proof of Mastery"]
+APP3D --> OSC
+
+%% STYLES
+style P0B  fill:#1e3a5f,color:#dde3f0,stroke:#2e5a8f
+style M1A  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M1B  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M1C  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M2A  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M2B  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M2C  fill:#1a3a5c,color:#dde3f0,stroke:#3a7abf,stroke-width:2
+style M3A  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M3B  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M3C  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M4A  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M4B  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style M4C  fill:#1a3a5c,color:#dde3f0,stroke:#2a5a8c
+style P1A  fill:#3d1f5c,color:#dde3f0,stroke:#6d3f8c
+style Ph1B fill:#3d1f5c,color:#dde3f0,stroke:#6d3f8c
+style Ph1C fill:#3d1f5c,color:#dde3f0,stroke:#6d3f8c
+style Ph2A fill:#3d1f5c,color:#dde3f0,stroke:#9d6fbf,stroke-width:2
+style Ph2B fill:#3d1f5c,color:#dde3f0,stroke:#9d6fbf,stroke-width:2
+style Ph2C fill:#3d1f5c,color:#dde3f0,stroke:#9d6fbf,stroke-width:2
+style C1A  fill:#1e4a1a,color:#dde3f0,stroke:#3e7a3a
+style C2A  fill:#1e4a1a,color:#dde3f0,stroke:#3e7a3a
+style C2B  fill:#1e4a1a,color:#dde3f0,stroke:#3e7a3a
+style C2C  fill:#1e4a1a,color:#dde3f0,stroke:#3e7a3a
+style QC1A fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC1B fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC1C fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC1D fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC2A fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC2B fill:#5c3d00,color:#dde3f0,stroke:#bc9d30,stroke-width:2
+style QC2C fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC2D fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style QC3A fill:#5c3d00,color:#dde3f0,stroke:#8c6d20
+style APP1A fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP1B fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP1C fill:#8b0000,color:#ffffff,stroke:#ff5555,stroke-width:3
+style APP1D fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP2A fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP2B fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP2C fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP3A fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP3B fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP3C fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style APP3D fill:#5c1a1a,color:#dde3f0,stroke:#8c3a3a
+style OSC  fill:#6d0000,color:#ffffff,stroke:#ff3333,stroke-width:3
+        </div>
+      </div>
+    </div>
+
+    <!-- overlay hint -->
+    <div id="hint-overlay">
+      <span>🖱 Scroll → zoom</span>
+      <span>🖱 Drag → pan</span>
+      <span>⛶ Focus mode = fullscreen tree</span>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'dark',
+    flowchart: { curve: 'basis', padding: 18, nodeSpacing: 44, rankSpacing: 56 }
+  });
+
+  let scale = 1;
+  let dragging = false, ox, oy, sl, st;
+  const canvas = document.getElementById('canvas');
+  const wrapper = document.getElementById('wrapper');
+  const zoomLabel = document.getElementById('zoom-level');
+
+  // Auto-fit after render
+  mermaid.initialize({ startOnLoad: true });
+  window.addEventListener('load', () => setTimeout(fitScreen, 800));
+
+  // Scroll zoom
+  canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const f = e.deltaY < 0 ? 1.1 : 0.91;
+    applyZoom(scale * f);
+  }, { passive: false });
+
+  // Drag pan
+  canvas.addEventListener('mousedown', e => {
+    dragging = true;
+    ox = e.pageX; oy = e.pageY;
+    sl = canvas.scrollLeft; st = canvas.scrollTop;
+    canvas.style.cursor = 'grabbing';
+  });
+  document.addEventListener('mouseup', () => { dragging = false; canvas.style.cursor = 'grab'; });
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    canvas.scrollLeft = sl - (e.pageX - ox);
+    canvas.scrollTop  = st - (e.pageY - oy);
+  });
+
+  // Touch pan
+  let tp = null;
+  canvas.addEventListener('touchstart', e => { tp = e.touches[0]; sl = canvas.scrollLeft; st = canvas.scrollTop; }, {passive:true});
+  canvas.addEventListener('touchmove', e => {
+    if (!tp) return;
+    canvas.scrollLeft = sl - (e.touches[0].clientX - tp.clientX);
+    canvas.scrollTop  = st - (e.touches[0].clientY - tp.clientY);
+  }, {passive:true});
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.key === 'r' || e.key === 'R') resetZoom();
+    if (e.key === 'f' || e.key === 'F') fitScreen();
+    if (e.key === 'Escape') { if (document.body.classList.contains('focus-mode')) toggleFocus(); }
+  });
+
+  function applyZoom(v) {
+    scale = Math.max(0.1, Math.min(4, v));
+    wrapper.style.transform = `scale(${scale})`;
+    zoomLabel.textContent = Math.round(scale * 100) + '%';
+  }
+  function zoom(f) { applyZoom(scale * f); }
+  function resetZoom() {
+    applyZoom(1);
+    canvas.scrollLeft = 0; canvas.scrollTop = 0;
+  }
+  function fitScreen() {
+    const cw = canvas.clientWidth - 80;
+    const ch = canvas.clientHeight - 80;
+    const ww = wrapper.scrollWidth;
+    const wh = wrapper.scrollHeight;
+    applyZoom(Math.min(cw / ww, ch / wh) * 0.9);
+    canvas.scrollLeft = 0; canvas.scrollTop = 0;
+  }
+
+  // Sidebar toggle
+  document.getElementById('toggle-sidebar').addEventListener('click', () => {
+    document.getElementById('sidebar').classList.toggle('collapsed');
+  });
+
+  // Focus mode
+  function toggleFocus() {
+    document.body.classList.toggle('focus-mode');
+    setTimeout(fitScreen, 300);
+  }
+
+  // Hide hint after 5s
+  setTimeout(() => {
+    const h = document.getElementById('hint-overlay');
+    if (h) h.style.opacity = '0';
+  }, 5000);
+</script>
+
+</body>
+</html>
