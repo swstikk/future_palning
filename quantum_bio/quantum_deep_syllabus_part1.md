@@ -1,5 +1,5 @@
 # ⚛️ Quantum Bioinformatics — Deep Chapter-wise Syllabus
-> **Level:** 10th Grade Math/Physics → VQE + Quantum ML for Genetic Engineering
+> **Level:** ########## → VQE + Quantum ML for Genetic Engineering
 > **Format:** Every Node → Sub-chapters → What/How/Code/Exit Criteria
 
 ---
@@ -1730,3 +1730,4 @@ M4.3  The Complete Math→Quantum Bridge
 - [ ] Eigenvalues of 0.5Z+0.5X = ±0.707 by hand
 - [ ] VQE equation explained symbol by symbol
 - [ ] **READY FOR PART 2 — PHYSICS PHASE 🚀**
+
