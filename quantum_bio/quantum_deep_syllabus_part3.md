@@ -9,146 +9,307 @@
 
 ## Module QC1.1: Qubits & Quantum States
 
+> **PREREQUISITES: Part 1 (Math) + Part 2 (Physics) ALL gates passed.**
+> You must know: complex numbers, vectors in ℂ², inner product, Born rule,
+> |0⟩=[1,0]ᵀ, |1⟩=[0,1]ᵀ, |+⟩, |-⟩, matrix-vector multiplication.
+> From Part 2: measurement postulate, eigenvalues, Pauli matrices.
+
 ```
 QC1.1.1  The Qubit — Physical vs Mathematical
-├── What to learn:
-│   ├── Classical bit: 0 OR 1 (definite)
-│   ├── Qubit: α|0⟩ + β|1⟩ (BOTH, with complex weights)
-│   │   Before measurement: genuinely in superposition
-│   │   After measurement: collapses to |0⟩ or |1⟩
-│   ├── Physical realizations:
-│   │   Superconducting qubits (IBM, Google): Josephson junction
-│   │   Trapped ions (IonQ): single ionized atoms
-│   │   Photonic qubits (PsiQuantum): photon polarization
-│   └── Mathematical: state lives in ℂ² with |α|²+|β|²=1
+├── Classical bit vs Qubit (THE fundamental difference):
+│   ┌──────────────────────┬──────────────────────────────────┐
+│   │ Classical Bit         │ Qubit                            │
+│   ├──────────────────────┼──────────────────────────────────┤
+│   │ Value: 0 OR 1         │ Value: α|0⟩ + β|1⟩ (BOTH!)      │
+│   │ State: bit b∈{0,1}    │ State: vector in ℂ²              │
+│   │ Deterministic          │ Probabilistic until measured     │
+│   │ Copy freely            │ NO-CLONING theorem              │
+│   │ Read without changing  │ Measurement DESTROYS superposition│
+│   │ n bits → n values      │ n qubits → 2ⁿ amplitudes       │
+│   └──────────────────────┴──────────────────────────────────┘
 │
-├── Normalization constraint:
-│   |α|² + |β|² = 1
-│   This is NOT optional — it ensures probabilities sum to 1
-│   Geometrically: state lives on the surface of unit sphere in ℂ²
+├── General single-qubit state:
+│   |ψ⟩ = α|0⟩ + β|1⟩     where α,β ∈ ℂ
+│   Constraint: |α|² + |β|² = 1  (probabilities sum to 1)
 │
-└── Code:
-    from qiskit.quantum_info import Statevector
-    psi = Statevector([1/np.sqrt(2), 1j/np.sqrt(2)])
-    print(psi.is_valid())  # True (normalized)
-    print(psi.probabilities())  # [0.5, 0.5]
-
-QC1.1.2  Bloch Sphere — The Qubit Visualization Tool
-├── Any single qubit state:
-│   |ψ⟩ = cos(θ/2)|0⟩ + e^(iφ)·sin(θ/2)|1⟩
-│   θ ∈ [0, π]: polar angle (latitude)
-│   φ ∈ [0, 2π): azimuthal angle (longitude)
+│   WORKED EXAMPLES:
+│   |ψ₁⟩ = |0⟩ → α=1, β=0. P(0)=1, P(1)=0.  (definitely |0⟩)
+│   |ψ₂⟩ = |+⟩ = (1/√2)|0⟩+(1/√2)|1⟩ → P(0)=P(1)=1/2 (coin flip)
+│   |ψ₃⟩ = (√3/2)|0⟩+(1/2)|1⟩ → P(0)=3/4, P(1)=1/4  (biased)
+│   |ψ₄⟩ = (1/√2)|0⟩+(i/√2)|1⟩ → P(0)=P(1)=1/2 but DIFFERENT from |+⟩!
+│   (Same probabilities, different PHASE → different physics)
 │
-├── Key locations on sphere:
-│   θ=0:    |0⟩ = north pole
-│   θ=π:    |1⟩ = south pole
-│   θ=π/2, φ=0:    |+⟩ = +x axis
-│   θ=π/2, φ=π:    |-⟩ = -x axis
-│   θ=π/2, φ=π/2:  |i⟩ = +y axis
-│   θ=π/2, φ=3π/2: |-i⟩= -y axis
+├── Physical realizations (how real qubits work):
+│   ┌─────────────────────┬────────────────────────────────────┐
+│   │ Technology           │ What is |0⟩ and |1⟩                │
+│   ├─────────────────────┼────────────────────────────────────┤
+│   │ Superconducting (IBM)│ Current flowing ↻ or ↺ in loop    │
+│   │ Trapped ion (IonQ)   │ Electron in ground vs excited state│
+│   │ Photonic (Xanadu)    │ Polarization: horizontal/vertical  │
+│   │ Spin qubit           │ Electron spin up ↑ or down ↓      │
+│   └─────────────────────┴────────────────────────────────────┘
+│   IBM Eagle processor: 127 superconducting qubits (2023)
+│   IBM Heron: 133 qubits, 2-qubit error <1% (2024)
 │
-├── Gates as rotations:
-│   X gate = π rotation about x-axis (|0⟩ ↔ |1⟩)
-│   Z gate = π rotation about z-axis (|+⟩ ↔ |-⟩)
-│   H gate = π rotation about x+z axis diagonal
-│   Rx(θ): rotation by θ about x-axis
-│
-└── Code:
-    from qiskit.visualization import plot_bloch_vector
-    # |+⟩ state = equator, φ=0
-    plot_bloch_vector([1, 0, 0])  # [x, y, z] Bloch coordinates
-
-QC1.1.3  Phase: Global vs Relative
-├── Global phase: e^(iα)|ψ⟩ is physically identical to |ψ⟩
-│   You can never detect global phase by any measurement
-│
-├── Relative phase: PHYSICALLY OBSERVABLE
-│   |+⟩ = (1/√2)(|0⟩ + |1⟩)
-│   |-⟩ = (1/√2)(|0⟩ - |1⟩)
-│   Same |α|²=|β|²=½, but DIFFERENT states — they interfere differently!
-│
-├── Relative phase matters for:
-│   Quantum interference (Grover uses this!)
-│   Gate action: Z gate introduces relative phase (|0⟩→|0⟩, |1⟩→-|1⟩)
+├── Code:
+│   import numpy as np
+│   from qiskit.quantum_info import Statevector
+│   # Create various qubit states:
+│   psi_0 = Statevector([1, 0])     # |0⟩
+│   psi_plus = Statevector([1/np.sqrt(2), 1/np.sqrt(2)])  # |+⟩
+│   psi_biased = Statevector([np.sqrt(3)/2, 1/2])         # 75/25 state
+│   psi_phase = Statevector([1/np.sqrt(2), 1j/np.sqrt(2)]) # same probs, diff phase
+│   for name, sv in [('|0⟩',psi_0),('|+⟩',psi_plus),('biased',psi_biased),('phase',psi_phase)]:
+│       print(f"{name}: valid={sv.is_valid()}, probs={sv.probabilities()}")
 │
 └── Exit check:
-    Draw these states on Bloch sphere: |0⟩, |1⟩, |+⟩, |-⟩, (1/√2)(|0⟩+i|1⟩).
-    Which have same probabilities but different physical states?
+    1. Is [0.6, 0.8] a valid qubit state? |0.6|²+|0.8|²=0.36+0.64=1 ✓
+    2. Is [0.5, 0.5] valid? |0.5|²+|0.5|²=0.5 ≠ 1 ✗ (not normalized!)
+    3. What is |α|² if α=(1+i)/2? |(1+i)/2|² = (1²+1²)/4 = 2/4 = 0.5
+
+QC1.1.2  Bloch Sphere — The Qubit Visualization Tool
+├── ANY single qubit state can be written as:
+│   |ψ⟩ = cos(θ/2)|0⟩ + e^(iφ)·sin(θ/2)|1⟩
+│   θ ∈ [0, π]:  polar angle (how far from north pole)
+│   φ ∈ [0, 2π): azimuthal angle (which direction on equator)
+│   → Every qubit maps to a point on a SPHERE (the Bloch sphere)
+│
+├── KEY STATES on the Bloch sphere (MEMORIZE):
+│   ┌────────────────┬──────────────┬──────────────────────────┐
+│   │ State          │ (θ, φ)       │ Bloch vector [x,y,z]     │
+│   ├────────────────┼──────────────┼──────────────────────────┤
+│   │ |0⟩            │ (0, -)       │ [0, 0, +1]  North pole   │
+│   │ |1⟩            │ (π, -)       │ [0, 0, -1]  South pole   │
+│   │ |+⟩            │ (π/2, 0)     │ [+1, 0, 0]  +x axis      │
+│   │ |-⟩            │ (π/2, π)     │ [-1, 0, 0]  -x axis      │
+│   │ |+i⟩=(|0⟩+i|1⟩)/√2│ (π/2, π/2)│ [0, +1, 0]  +y axis   │
+│   │ |-i⟩=(|0⟩-i|1⟩)/√2│ (π/2, 3π/2)│[0, -1, 0]  -y axis   │
+│   └────────────────┴──────────────┴──────────────────────────┘
+│
+├── WORKED EXAMPLE — find Bloch coordinates:
+│   |ψ⟩ = (√3/2)|0⟩ + (1/2)|1⟩
+│   cos(θ/2) = √3/2 → θ/2 = π/6 → θ = π/3
+│   e^(iφ)·sin(θ/2) = 1/2 → e^(iφ)·(1/2) = 1/2 → e^(iφ) = 1 → φ = 0
+│   Bloch: x=sin(π/3)cos(0)=√3/2, y=sin(π/3)sin(0)=0, z=cos(π/3)=1/2
+│   → [√3/2, 0, 1/2] — between north pole and +x axis, upper hemisphere
+│
+├── Gates AS rotations on the Bloch sphere:
+│   X gate = π rotation about x-axis: |0⟩ ↔ |1⟩ (north↔south)
+│   Y gate = π rotation about y-axis: |0⟩ → i|1⟩
+│   Z gate = π rotation about z-axis: |+⟩ ↔ |-⟩ (swaps +x and -x)
+│   H gate = π rotation about (x+z)/√2 axis: |0⟩ ↔ |+⟩
+│   Rx(θ) = rotation by θ about x-axis
+│   Ry(θ) = rotation by θ about y-axis (moves from pole toward equator)
+│   Rz(θ) = rotation by θ about z-axis (changes φ only)
+│
+├── Code:
+│   from qiskit.visualization import plot_bloch_multivector
+│   from qiskit.quantum_info import Statevector
+│   # Visualize several states:
+│   for state_label, sv in [('|0⟩', [1,0]), ('|+⟩', [1/np.sqrt(2), 1/np.sqrt(2)]),
+│                            ('|+i⟩', [1/np.sqrt(2), 1j/np.sqrt(2)])]:
+│       psi = Statevector(sv)
+│       fig = plot_bloch_multivector(psi)
+│       fig.suptitle(state_label)
+│       fig.savefig(f'bloch_{state_label}.png')
+│
+└── Exit check:
+    1. Where is Ry(π/2)|0⟩ on the Bloch sphere?
+       Ry(π/2)|0⟩ = cos(π/4)|0⟩+sin(π/4)|1⟩ = |+⟩ → +x axis ✓
+    2. Where is Rz(π/2)|+⟩?
+       Rz(π/2) rotates by π/2 about z → |+⟩ goes to |+i⟩ (+y axis) ✓
+    3. Plot all 6 key states on Bloch sphere using Qiskit.
+
+QC1.1.3  Phase: Global vs Relative — The Subtlety That Makes Quantum Work
+├── Global phase: e^(iα)|ψ⟩ is PHYSICALLY IDENTICAL to |ψ⟩
+│   WHY? Born rule: P = |⟨φ|e^(iα)ψ⟩|² = |e^(iα)|²|⟨φ|ψ⟩|² = |⟨φ|ψ⟩|²
+│   The e^(iα) cancels! → undetectable by any measurement
+│   Example: |0⟩ and i|0⟩ and -|0⟩ are the SAME physical state
+│
+├── Relative phase: PHYSICALLY OBSERVABLE and CRUCIAL
+│   |+⟩ = (1/√2)(|0⟩ + |1⟩)  → relative phase between |0⟩,|1⟩ is 0
+│   |-⟩ = (1/√2)(|0⟩ - |1⟩)  → relative phase is π (the minus sign)
+│   Same P(0)=P(1)=1/2 for BOTH states!
+│   But ⟨X⟩ = +1 for |+⟩, ⟨X⟩ = -1 for |-⟩ → DIFFERENT measurements!
+│
+├── How relative phase arises:
+│   Z gate: Z|+⟩ = Z(1/√2)(|0⟩+|1⟩) = (1/√2)(|0⟩-|1⟩) = |-⟩
+│   Z didn't change probabilities but added π relative phase!
+│   This is INVISIBLE in Z-measurement but VISIBLE in X-measurement
+│
+├── INTERFERENCE — why phase matters:
+│   |ψ₁⟩ = (1/√2)(|0⟩+|1⟩) → apply H → H|+⟩ = |0⟩ (constructive)
+│   |ψ₂⟩ = (1/√2)(|0⟩-|1⟩) → apply H → H|-⟩ = |1⟩ (destructive)
+│   SAME probabilities before H, DIFFERENT outcomes after H!
+│   This is quantum INTERFERENCE — the engine of all quantum speedups
+│
+├── VQE/Grover connection:
+│   Grover oracle: marks target with -1 phase (relative phase change)
+│   Diffuser: amplifies marked state via interference
+│   VQE: rotation gate angles θ control relative phase → change ⟨H⟩
+│
+├── Code — demonstrating phase matters:
+│   from qiskit import QuantumCircuit
+│   from qiskit.quantum_info import Statevector
+│   # State 1: |+⟩, then H → should give |0⟩
+│   qc1 = QuantumCircuit(1); qc1.h(0); qc1.h(0)
+│   print(Statevector(qc1))  # [1, 0] = |0⟩ ✓
+│   # State 2: |-⟩, then H → should give |1⟩
+│   qc2 = QuantumCircuit(1); qc2.x(0); qc2.h(0); qc2.h(0)
+│   print(Statevector(qc2))  # [0, 1] = |1⟩ ✓
+│   # Same probs (50/50) before final H, different outcomes!
+│
+└── Exit check:
+    1. Are e^(iπ/4)|+⟩ and |+⟩ physically different? NO (global phase)
+    2. Are |+⟩ and |-⟩ physically different? YES (relative phase)
+    3. Apply H to (1/√2)(|0⟩+i|1⟩). What's the result?
+       H[(1/√2)(|0⟩+i|1⟩)] = (1/2)[(1+i)|0⟩+(1-i)|1⟩]
+       P(0) = |1+i|²/4 = 2/4 = 1/2, P(1) = 1/2 (equal, but different from |+⟩ case!)
+    4. Verify in Qiskit code.
+
+═══════════════════════════════════════════
+ GATE TO QC1.2 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know: qubit = α|0⟩+β|1⟩ with |α|²+|β|²=1
+ □ Can check if a vector is a valid qubit state
+ □ Know 6 key Bloch sphere states (table above) from memory
+ □ Can find θ,φ for a given state (e.g. (√3/2)|0⟩+(1/2)|1⟩ → θ=π/3, φ=0)
+ □ Know: gates = rotations on Bloch sphere (X=x-rot, Z=z-rot, H=diagonal)
+ □ Know: global phase undetectable; relative phase → interference
+ □ Demonstrated interference: H|+⟩=|0⟩ vs H|-⟩=|1⟩ in code
+ □ Created Statevector objects and used plot_bloch_multivector
+═══════════════════════════════════════════
 ```
 
 ---
 
 ## Module QC1.2: Quantum Gates — Complete Reference
 
+> **PREREQUISITES: QC1.1 gate passed.**
+> Need: matrix-vector multiplication (M2.2), Pauli matrices (M2.3),
+> Euler's formula (M1.1), unitary = U†U=I (M2.3).
+
 ```
-QC1.2.1  Single-Qubit Gates (Matrix Reference)
-├── Pauli gates (must memorize — NO calculator):
-│   X = [[0,1],[1,0]]     Y = [[0,-i],[i,0]]     Z = [[1,0],[0,-1]]
+QC1.2.1  Single-Qubit Gates — Complete Reference
+├── PAULI GATES (memorize):
+│   X = [[0,1],[1,0]]   "bit flip / NOT"
+│     X|0⟩=|1⟩,  X|1⟩=|0⟩
+│   Y = [[0,-i],[i,0]]  "bit+phase flip"
+│     Y|0⟩=i|1⟩, Y|1⟩=-i|0⟩
+│   Z = [[1,0],[0,-1]]  "phase flip"
+│     Z|0⟩=|0⟩,  Z|1⟩=-|1⟩
 │
-├── Phase gates:
-│   S = [[1,0],[0,i]]  (T-gate in two applications: S²=Z)
-│   T = [[1,0],[0,e^(iπ/4)]]  (π/8 gate)
+├── PHASE GATES:
+│   S = [[1,0],[0,i]]  (π/2 phase on |1⟩);  S²=Z
+│   T = [[1,0],[0,e^(iπ/4)]]  (π/4 phase);  T²=S
+│   Phase chain: T→T=S→S=Z→Z=I
+│   WORKED: S|+⟩ = (1/√2)(|0⟩+i|1⟩) = |+i⟩ (rotated to +y)
 │
-├── Hadamard:
+├── HADAMARD:
 │   H = (1/√2)[[1,1],[1,-1]]
+│   H|0⟩=|+⟩, H|1⟩=|-⟩, H|+⟩=|0⟩, H|-⟩=|1⟩.  H²=I.
+│   Key: H switches Z-basis ↔ X-basis
 │
-├── Rotation gates (continuous, key for VQE):
+├── ROTATION GATES (VQE parameters live here):
 │   Rx(θ) = [[cos(θ/2), -i·sin(θ/2)], [-i·sin(θ/2), cos(θ/2)]]
-│   Ry(θ) = [[cos(θ/2), -sin(θ/2)],   [sin(θ/2),    cos(θ/2)]]
-│   Rz(θ) = [[e^(-iθ/2),   0],         [0,       e^(iθ/2)]]
+│   Ry(θ) = [[cos(θ/2), -sin(θ/2)], [sin(θ/2), cos(θ/2)]]
+│   Rz(θ) = [[e^(-iθ/2), 0], [0, e^(iθ/2)]]
+│   Ry(0)=I, Ry(π/3)|0⟩=(√3/2)|0⟩+(1/2)|1⟩, Ry(π)=-iY
+│   VQE: optimizer adjusts θ₁,θ₂,... in Ry gates → minimize ⟨H⟩
 │
-│   Ry(0)=I, Ry(π)=iY, Ry(π/2) = H·phase  ← nearly Hadamard
+├── UNIVERSAL SET: {H, T, CNOT} → ANY unitary (Solovay-Kitaev thm)
 │
-└── Universal set: {H, T, CNOT} — can approximate ANY unitary gate!
-
-QC1.2.2  Two-Qubit Gates
-├── CNOT (CX gate):
-│   Matrix (4×4, computational basis |00⟩,|01⟩,|10⟩,|11⟩):
-│   [[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]
-│   Rule: if control=|0⟩ → target unchanged, if control=|1⟩ → target flipped
-│   CNOT |00⟩ = |00⟩,  CNOT |10⟩ = |11⟩,  CNOT |11⟩ = |10⟩
-│
-├── CZ gate:
-│   Applies Z to target ONLY if control = |1⟩
-│   Symmetric: CZ|11⟩ = -|11⟩, all others unchanged
-│
-├── SWAP gate:
-│   Exchanges two qubits: SWAP|01⟩ = |10⟩
-│   Equivalent to 3 CNOTs: SWAP = CNOT₀₁·CNOT₁₀·CNOT₀₁
-│
-├── Why 2-qubit gates are expensive:
-│   On real hardware: 2-qubit gates have 10x higher error than 1-qubit
-│   Gate fidelity: 1-qubit ≈ 99.9%, 2-qubit ≈ 99.0-99.5% (IBM 2024)
-│   VQE circuit design = minimize 2-qubit gate count!
-│
-└── Code (Bell state from |00⟩):
-    from qiskit import QuantumCircuit
-    qc = QuantumCircuit(2)
-    qc.h(0)          # H on qubit 0: |00⟩ → |+0⟩
-    qc.cx(0, 1)      # CNOT: |+0⟩ → |Φ+⟩ = (|00⟩+|11⟩)/√2
-    print(Statevector(qc).data)  # [1/√2, 0, 0, 1/√2]
-
-QC1.2.3  Circuit Notation & Building Circuits in Qiskit
-├── Reading circuit diagrams:
-│   Left to right = time
-│   Horizontal lines = qubit "wires"
-│   Boxes = single-qubit gates
-│   Vertical lines with dot/circle = controlled gates
-│
-├── Qiskit circuit building:
-│   qc = QuantumCircuit(n_qubits, n_classical_bits)
-│   qc.h(0)          # Hadamard on qubit 0
-│   qc.rx(theta, 1)  # Rx rotation on qubit 1
-│   qc.cx(0, 1)      # CNOT: control=0, target=1
-│   qc.measure(0, 0) # measure qubit 0 → classical bit 0
-│   qc.draw('mpl')   # visualize
+├── Code:
+│   from qiskit import QuantumCircuit
+│   from qiskit.quantum_info import Statevector, Operator
+│   import numpy as np
+│   qc = QuantumCircuit(1); qc.h(0); qc.s(0)
+│   print(Statevector(qc))  # [0.707, 0.707j] = |+i⟩ ✓
+│   T = Operator.from_label('T'); S = Operator.from_label('S')
+│   print(np.allclose((T@T).data, S.data))  # True: T²=S ✓
 │
 └── Exit check:
-    Build circuit: |00⟩ → (1/2)(|00⟩+|01⟩+|10⟩+|11⟩) using minimum gates.
-    Solution: H⊗H. Verify statevector shows equal amplitudes.
-```
+    1. S|+⟩=? (answer: |+i⟩); T|+⟩=? (answer: (1/√2)(|0⟩+e^(iπ/4)|1⟩))
+    2. Ry(π/3)|0⟩=? (answer: (√3/2)|0⟩+(1/2)|1⟩)
+    3. Rz(π)|+⟩=? (answer: -i|-⟩ = |-⟩ up to global phase)
 
----
+QC1.2.2  Two-Qubit Gates — Entanglement Creators
+├── CNOT (CX) — MOST important 2-qubit gate:
+│   4×4 matrix (basis |00⟩,|01⟩,|10⟩,|11⟩):
+│   [[1,0,0,0],[0,1,0,0],[0,0,0,1],[0,0,1,0]]
+│   Rule: target FLIPPED only if control=|1⟩
+│   Truth table:
+│   |00⟩→|00⟩, |01⟩→|01⟩, |10⟩→|11⟩, |11⟩→|10⟩
+│
+│   WORKED — Bell state |Φ+⟩ step by step:
+│   Start:  |00⟩
+│   H on q0: (1/√2)(|0⟩+|1⟩)⊗|0⟩ = (1/√2)(|00⟩+|10⟩)
+│   CNOT:    (1/√2)(|00⟩+|11⟩) = |Φ+⟩  ✓
+│   (|10⟩→|11⟩ because ctrl=1 flips target)
+│
+├── CZ: minus only on |11⟩ → CZ|11⟩=-|11⟩, rest unchanged
+├── SWAP: exchanges qubits → SWAP|01⟩=|10⟩; decomp = 3 CNOTs
+│
+├── Hardware error reality:
+│   ┌──────────────┬──────────┬───────────┐
+│   │ Gate type     │ Error    │ Time      │
+│   ├──────────────┼──────────┼───────────┤
+│   │ 1-qubit (Rz) │ ~0.01%   │ ~20 ns    │
+│   │ 2-qubit (CX) │ ~0.5-1%  │ ~200 ns   │
+│   │ Measurement  │ ~1-2%    │ ~500 ns   │
+│   └──────────────┴──────────┴───────────┘
+│   → VQE circuit design = MINIMIZE 2-qubit gate count!
+│
+├── Code:
+│   qc = QuantumCircuit(2); qc.h(0); qc.cx(0,1)
+│   bell = Statevector(qc)
+│   print(bell.data)           # [0.707, 0, 0, 0.707]
+│   print(bell.probabilities())# [0.5, 0, 0, 0.5] ✓
+│
+└── Exit check:
+    1. CNOT|+0⟩ = ? → |Φ+⟩ (Bell state)
+    2. CNOT|-0⟩ = ? → |Φ-⟩ = (1/√2)(|00⟩-|11⟩)
+    3. Verify CZ = (H⊗I)·CNOT·(H⊗I) using np.kron
+
+QC1.2.3  Circuit Building in Qiskit
+├── Reading circuit diagrams:
+│   Left→right = time; lines = qubits; boxes = gates
+│   Dot+⊕ = CNOT (dot=control, ⊕=target)
+│
+├── Qiskit API:
+│   qc = QuantumCircuit(n_qubits, n_classical_bits)
+│   qc.h(0); qc.x(1); qc.ry(theta, 0); qc.rz(phi, 1)
+│   qc.s(0); qc.t(0)           # phase gates
+│   qc.cx(0,1); qc.cz(0,1)     # 2-qubit
+│   qc.measure(0, 0)            # qubit→classical
+│   qc.measure_all()            # all qubits
+│   qc.draw('mpl')              # matplotlib
+│
+├── Code — H⊗H superposition:
+│   qc = QuantumCircuit(2); qc.h([0,1])
+│   sv = Statevector(qc)
+│   print(sv.probabilities())   # [0.25, 0.25, 0.25, 0.25] ✓
+│
+└── Exit check:
+    Build circuits for:
+    1. |00⟩ → equal superposition of all 4 basis states (H⊗H)
+    2. |00⟩ → |Φ+⟩ Bell state (H, CNOT)
+    3. |00⟩ → |Ψ+⟩ = (1/√2)(|01⟩+|10⟩) (X(0), H(0), CNOT(0,1))
+    Draw all 3 with qc.draw('mpl').
+
+═══════════════════════════════════════════
+ GATE TO QC1.3 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Write X,Y,Z,H,S,T matrices from memory
+ □ Know: S²=Z, T²=S, H²=I
+ □ Know Ry/Rz forms; can compute Ry(π/3)|0⟩ by hand
+ □ Universal set: {H, T, CNOT} can build any gate
+ □ CNOT truth table: |00⟩→|00⟩, |01⟩→|01⟩, |10⟩→|11⟩, |11⟩→|10⟩
+ □ Created Bell state: H(0)→CNOT(0,1) gives |Φ+⟩
+ □ Know hardware errors: 2-qubit ~10x worse → minimize in VQE
+ □ Built and drew 3+ circuits in Qiskit
+═══════════════════════════════════════════
+```
 
 ## Module QC1.3: Quantum Measurement
 
@@ -206,6 +367,17 @@ QC1.3.3  Expectation Values — The VQE Cost Function
     Circuit: Ry(π/3)|0⟩. Observable: Z.
     Compute ⟨Z⟩ analytically: cos(π/3) = 0.5.
     Verify with StatevectorEstimator.
+
+═══════════════════════════════════════════
+ GATE TO QC1.4 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know: Z-basis measurement gives |0⟩ or |1⟩ with P=|α|²,|β|²
+ □ Know: measurement DESTROYS superposition (irreversible)
+ □ Ran 10000-shot simulation, verified P≈0.75 for biased state
+ □ Know: X-basis = H then Z-measure; Y-basis = Sdg→H then Z-measure  
+ □ Know: VQE measures each Pauli string with basis rotation
+ □ Used StatevectorEstimator to compute ⟨Z⟩ for Ry(π/3)|0⟩ = 0.5
+═══════════════════════════════════════════
 ```
 
 ---
@@ -248,6 +420,16 @@ QC1.4.3  Why VQE Needs Entanglement
     Aromatic rings (benzene, DNA bases): π-electron system is entangled
     Classical HF can't capture ring current, resonance stabilization properly
     Quantum simulation → correct reaction energies for DNA interstrand crosslinks
+
+═══════════════════════════════════════════
+ GATE TO C2.x — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know: product state = factorable; entangled = cannot factor
+ □ Can prove |Φ+⟩ entangled (contradiction argument)
+ □ Know all 4 Bell states from memory with circuits
+ □ VQE needs entanglement for electron correlation
+ □ Hartree-Fock misses correlation energy → VQE fixes this
+═══════════════════════════════════════════
 ```
 
 ---
@@ -330,6 +512,17 @@ C2.3  Parameterized Circuits — The Core of VQE
     # Cost: ⟨Z⟩ = ⟨0|Ry(-θ)ZRy(θ)|0⟩ = cos(θ)
     # Minimize cos(θ) → θ=π → |ψ(π)⟩=|1⟩, ⟨Z⟩=-1 ✓
     # THIS IS VQE LOGIC IN ITS SIMPLEST FORM
+
+═══════════════════════════════════════════
+ GATE TO QC2.1 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Qiskit installed; Bell state circuit runs
+ □ Know 3 simulators: Statevector, Aer (shots), Noise model
+ □ Built parameterized circuit with ParameterVector
+ □ Used assign_parameters() to bind values
+ □ Know parameter-shift: ∂E/∂θ = [E(θ+π/2)-E(θ-π/2)]/2
+ □ Mini VQE: H=Z, ansatz=Ry(θ), θ=π gives ⟨Z⟩=-1
+═══════════════════════════════════════════
 ```
 
 ---
@@ -414,6 +607,17 @@ QC2.1.3  Classical Optimizers in VQE
     H = 0.5·(Z⊗Z) + 0.5·(X⊗I)  [create as SparsePauliOp]
     Ansatz: Ry(θ₁)⊗Ry(θ₂) → CNOT
     Find ground state energy using COBYLA. Compare to exact eigvals.
+
+═══════════════════════════════════════════
+ GATE TO QC3.1 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know variational principle: ⟨ψ|H|ψ⟩ ≥ E₀ for all |ψ⟩
+ □ Know 3 ansatz needs: expressibility, efficiency, trainability
+ □ Know HEA vs UCCSD tradeoffs
+ □ Know COBYLA vs SPSA vs Adam
+ □ Know barren plateau problem and mitigations
+ □ Ran full VQE on 2-qubit Hamiltonian
+═══════════════════════════════════════════
 ```
 
 ---
@@ -486,4 +690,136 @@ QC3.1.4  BIO Application — Genomic k-mer Search
 └── Active research: major challenge = QRAM (quantum random access memory)
     Loading the database into superposition is itself an O(N) operation
     Quantum advantage only realized if QRAM loading is efficient
+
+═══════════════════════════════════════════
+ ⭐ MASTER QC GATE — PART 3 COMPLETE ⭐
+═══════════════════════════════════════════
+ □ QC1.1: Qubit states, Bloch sphere, phase
+ □ QC1.2: All gates, universal set, CNOT
+ □ QC1.3: Measurement, basis rotation, expectation
+ □ QC1.4: Entanglement, Bell states
+ □ C2.x: Qiskit, simulators, parameterized circuits
+ □ QC2.1: Variational principle, ansatz, optimizers
+ □ QC3.1: Grover oracle, diffuser, bio app
+═══════════════════════════════════════════
 ```
+
+---
+
+# ✅ COMPLETE TO-DO LIST — PART 3 (QC THEORY + ALGORITHMS)
+
+## QC1.1 Qubits
+- [ ] Classical bit vs qubit table
+- [ ] |ψ⟩=α|0⟩+β|1⟩; normalization check
+- [ ] Physical realizations (4 types)
+- [ ] Statevector in Qiskit
+- [ ] Bloch sphere 6 states memorized
+- [ ] Find θ,φ for given state by hand
+- [ ] Gates = rotations on Bloch
+- [ ] Global vs relative phase
+- [ ] Interference demo: H|+⟩=|0⟩ vs H|-⟩=|1⟩
+- [ ] QC1.1 GATE ✓
+
+## QC1.2 Gates
+- [ ] X,Y,Z,H,S,T matrices from memory
+- [ ] S²=Z, T²=S, H²=I
+- [ ] S|+⟩=|+i⟩ by hand
+- [ ] Ry(θ), Rz(θ) forms; Ry(π/3)|0⟩ by hand
+- [ ] Universal set {H,T,CNOT}
+- [ ] CNOT truth table; 4×4 matrix
+- [ ] Bell state step-by-step
+- [ ] CZ, SWAP gates
+- [ ] Hardware error rates table
+- [ ] 3 circuits built and drawn
+- [ ] QC1.2 GATE ✓
+
+## QC1.3 Measurement
+- [ ] Z-basis: P(0)=|α|², destroys superposition
+- [ ] 10000-shot verification
+- [ ] X-basis = H→Z; Y-basis = Sdg→H→Z
+- [ ] VQE Pauli string measurement
+- [ ] StatevectorEstimator: ⟨Z⟩ for Ry(π/3)|0⟩
+- [ ] QC1.3 GATE ✓
+
+## QC1.4 Entanglement
+- [ ] Product vs entangled; prove |Φ+⟩ entangled
+- [ ] Schmidt decomposition concept
+- [ ] 4 Bell states from memory + circuits
+- [ ] VQE needs entanglement (correlation energy)
+- [ ] BIO: DNA π-electrons
+- [ ] QC1.4 GATE ✓
+
+## C2.x Qiskit
+- [ ] Install + first circuit
+- [ ] 3 simulator types
+- [ ] Parameterized circuit with ParameterVector
+- [ ] assign_parameters()
+- [ ] Parameter-shift gradient rule
+- [ ] Mini VQE: H=Z, Ry(θ), θ=π →⟨Z⟩=-1
+- [ ] C2.x GATE ✓
+
+## QC2.1 VQE
+- [ ] Variational principle proof
+- [ ] HEA vs UCCSD ansatz
+- [ ] EfficientSU2 from library
+- [ ] COBYLA, SPSA, Adam optimizers
+- [ ] Barren plateau problem
+- [ ] Full 2-qubit VQE run
+- [ ] QC2.1 GATE ✓
+
+## QC3.1 Grover
+- [ ] Classical O(N) vs quantum O(√N)
+- [ ] Phase oracle construction
+- [ ] Phase kickback
+- [ ] Diffuser circuit
+- [ ] 2-qubit Grover code
+- [ ] Optimal iterations ≈(π/4)√N
+- [ ] BIO: k-mer search + QRAM challenge
+- [ ] QC3.1 GATE ✓
+
+---
+
+## ⭐ MASTER SIGN-OFF — PART 3
+
+- [ ] All 7 module gates passed
+- [ ] Can build circuits in Qiskit
+- [ ] Mini VQE + full VQE completed
+- [ ] Grover coded and tested
+- [ ] **READY FOR PART 4 — QUANTUM CHEMISTRY 🚀**
+
+---
+
+## 🌳 Part 3 Module Dependency Tree
+
+```mermaid
+graph TD
+    P1["Part 1: Math ✅"] --> P2["Part 2: Physics ✅"]
+    P2 --> QC11["QC1.1: Qubits"]
+    QC11 --> QC12["QC1.2: Gates"]
+    QC12 --> QC13["QC1.3: Measurement"]
+    QC13 --> QC14["QC1.4: Entanglement"]
+    QC14 --> C2["C2.x: Qiskit"]
+    C2 --> QC21["QC2.1: VQE"]
+    QC21 --> QC31["QC3.1: Grover"]
+    
+    QC12 -.->|"CNOT creates"| QC14
+    QC13 -.->|"basis rotation"| QC21
+    QC14 -.->|"correlation"| QC21
+    C2 -.->|"param circuits"| QC21
+    
+    QC21 --> P4["Part 4: Quantum Chemistry"]
+    QC31 --> BIO["BIO: k-mer Search"]
+    
+    style P1 fill:#2d6a4f,color:#fff
+    style P2 fill:#2d6a4f,color:#fff
+    style QC11 fill:#1d3557,color:#fff
+    style QC12 fill:#1d3557,color:#fff
+    style QC13 fill:#457b9d,color:#fff
+    style QC14 fill:#457b9d,color:#fff
+    style C2 fill:#e76f51,color:#fff
+    style QC21 fill:#f4a261,color:#000
+    style QC31 fill:#e9c46a,color:#000
+    style P4 fill:#264653,color:#fff
+    style BIO fill:#2a9d8f,color:#fff
+```
+

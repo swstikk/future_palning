@@ -1480,3 +1480,116 @@ Ph2.3.7  Reading Quantum Equations — The Ultimate Test
  □ Passed the FINAL EXIT CHECK (computed ⟨Z⟩, ⟨X⟩, P(|0⟩) for complex state)
 ═══════════════════════════════════════════
 ```
+
+
+---
+
+# TO-DO LIST — PART 2 (PHYSICS PHASE)
+> Har topic complete karne ke baad check karo. Ek bhi miss mat karna.
+
+## Phase 1 — Classical to Quantum Foundation
+
+### Ph1.1 Classical Mechanics & Energy
+- [ ] Ph1.1.1  Newton's laws in own words (F=ma, inertia, action-reaction)
+- [ ] Ph1.1.2  Work = F·d·cosθ; compute for F=10N, d=5m, θ=60°
+- [ ] Ph1.1.3  KE = ½mv²; compute for m=2kg, v=3m/s
+- [ ] Ph1.1.4  PE = mgh; compute for m=1kg, h=10m
+- [ ] Ph1.1.5  Conservation: KE+PE = constant (no friction)
+- [ ] Ph1.1.6  Coulomb potential: V(r)=-e²/r (electron in H atom)
+- [ ] Ph1.1.7  Total energy: E = KE + PE = p²/2m - e²/r
+- [ ] Ph1.1.8  H atom energy: Eₙ=-13.6/n² eV; E₁, E₂, E₃ computed
+- [ ] Ph1.1.9  H₂ energy is the sum that VQE must find (explain conceptually)
+- [ ] Ph1.1 GATE — passed ✓
+
+### Ph1.2 Hamiltonian Mechanics
+- [ ] Ph1.2.1  Lagrangian: L=KE-PE=T-V
+- [ ] Ph1.2.2  Euler-Lagrange: d/dt(∂L/∂q̇)-∂L/∂q=0
+- [ ] Ph1.2.3  Derive F=ma from EL for L=½mẋ²-V(x)
+- [ ] Ph1.2.4  Conjugate momentum: p=∂L/∂q̇ (general)
+- [ ] Ph1.2.5  Legendre transform: H=pq̇-L (Hamiltonian)
+- [ ] Ph1.2.6  Hamilton's equations: q̇=∂H/∂p, ṗ=-∂H/∂q
+- [ ] Ph1.2.7  Solve harmonic oscillator with Hamilton's equations
+- [ ] Ph1.2.8  Poisson bracket: {f,g}=Σ(∂f/∂qₖ·∂g/∂pₖ - ∂f/∂pₖ·∂g/∂qₖ)
+- [ ] Ph1.2.9  {x,p}=1 (canonical commutation relation, classical)
+- [ ] Ph1.2.10 Transition: {·,·} → [·,·]/iℏ (quantum commutator)
+- [ ] Ph1.2 GATE — passed ✓
+
+### Ph1.3 Wave Mechanics
+- [ ] Ph1.3.1  Wave parameters: wavelength λ, frequency f, speed v=fλ, period T
+- [ ] Ph1.3.2  Wave function: y(x,t)=A·sin(kx-ωt); verify is wave equation solution
+- [ ] Ph1.3.3  Superposition: add two waves; constructive/destructive interference
+- [ ] Ph1.3.4  Standing waves: ψₙ(x)=A·sin(nπx/L); nodes at boundaries
+- [ ] Ph1.3.5  de Broglie: λ=h/p (matter waves); compute for electron at 1eV
+- [ ] Ph1.3.6  Planck: E=hf (quanta of energy)
+- [ ] Ph1.3.7  Photoelectric effect: Eₖ=hf-φ; explains it needs min frequency
+- [ ] Ph1.3.8  Atom spectra: Bohr model; ΔE=(13.6)(1/n₁²-1/n₂²) eV
+- [ ] Ph1.3.9  UV light causes DNA damage: λ<320nm photons break bonds
+- [ ] Ph1.3 GATE — passed ✓
+
+## Phase 2 — Quantum Mechanics Core
+
+### Ph2.1 Schrödinger Equation
+- [ ] Ph2.1.1  TDSE: iℏ∂ψ/∂t = Ĥψ — write it and name every symbol
+- [ ] Ph2.1.2  Ĥ = -ℏ²/2m · ∂²/∂x² + V(x) (Hamiltonian operator)
+- [ ] Ph2.1.3  Kinetic energy operator: p̂→-iℏ∂/∂x; KE=p̂²/2m
+- [ ] Ph2.1.4  TISE: Ĥψ=Eψ (eigenvalue equation — time-independent)
+- [ ] Ph2.1.5  Born rule: |ψ(x)|² = probability DENSITY
+- [ ] Ph2.1.6  ∫|ψ|²dx=1 (normalization) — what this means physically
+- [ ] Ph2.1.7  Separation of variables: ψ(x,t)=φ(x)·e^(-iEt/ℏ) — derive TISE
+- [ ] Ph2.1.8  Particle in box: ψₙ=√(2/L)sin(nπx/L), Eₙ=n²π²ℏ²/2mL²
+- [ ] Ph2.1.9  Compute E₁ for electron in 1nm box
+- [ ] Ph2.1.10 Normalization of ψ₁: ∫₀ᴸ|ψ₁|²dx=1 verified analytically
+- [ ] Ph2.1.11 P(x∈[0,L/2]) for ground state = 1/2 (by symmetry)
+- [ ] Ph2.1 GATE — passed ✓
+
+### Ph2.2 Quantum Postulates
+- [ ] Ph2.2.1  Postulate 1: state = ket |ψ⟩ in Hilbert space
+- [ ] Ph2.2.2  Postulate 2: observables = Hermitian operators
+- [ ] Ph2.2.3  Postulate 3: measurement outcomes = eigenvalues
+- [ ] Ph2.2.4  Postulate 4: Born rule P(aₙ)=|⟨aₙ|ψ⟩|²
+- [ ] Ph2.2.5  Postulate 5: state collapse after measurement
+- [ ] Ph2.2.6  Postulate 6: time evolution = iℏd|ψ⟩/dt=Ĥ|ψ⟩
+- [ ] Ph2.2.7  Compute [X̂,Ẑ]=? (commutator XZ-ZX) — write out matrix product
+- [ ] Ph2.2.8  [X̂,Ẑ]=2iŶ — verify in NumPy
+- [ ] Ph2.2.9  [x̂,p̂]=iℏ (canonical commutation relation, quantum)
+- [ ] Ph2.2.10 Uncertainty: ΔA·ΔB ≥ |⟨[Â,B̂]⟩|/2
+- [ ] Ph2.2.11 Δx·Δp ≥ ℏ/2 (Heisenberg) — compute for electron vs baseball
+- [ ] Ph2.2.12 Expectation ⟨A⟩=⟨ψ|A|ψ⟩ — compute ⟨Z⟩ for |+⟩=0
+- [ ] Ph2.2.13 Shot noise: σ≈1/√N; N=1024 shots → 3% error
+- [ ] Ph2.2 GATE — passed ✓
+
+### Ph2.3 Dirac Notation
+- [ ] Ph2.3.1  Ket |ψ⟩: column vector, state of system
+- [ ] Ph2.3.2  Bra ⟨ψ|: row vector, dagger of ket
+- [ ] Ph2.3.3  Inner product ⟨φ|ψ⟩ = overlap (complex number)
+- [ ] Ph2.3.4  |⟨φ|ψ⟩|² = probability of measuring |φ⟩ in state |ψ⟩
+- [ ] Ph2.3.5  ⟨0|ψ⟩=α and ⟨1|ψ⟩=β for |ψ⟩=α|0⟩+β|1⟩
+- [ ] Ph2.3.6  Outer product |ψ⟩⟨φ| = matrix (operator)
+- [ ] Ph2.3.7  |0⟩⟨0| as projector: compute 2×2 matrix
+- [ ] Ph2.3.8  X = |0⟩⟨1|+|1⟩⟨0| verification in NumPy
+- [ ] Ph2.3.9  Expectation sandwich: ⟨ψ|Â|ψ⟩ — compute ⟨Z⟩ for |+⟩
+- [ ] Ph2.3.10 Spectral: Â=Σaₙ|aₙ⟩⟨aₙ|; Z=(+1)|0⟩⟨0|+(-1)|1⟩⟨1|
+- [ ] Ph2.3.11 2-qubit: |00⟩,|01⟩,|10⟩,|11⟩ as 4-component vectors
+- [ ] Ph2.3.12 Prove |Φ+⟩=(1/√2)(|00⟩+|11⟩) is entangled (cannot factor)
+- [ ] Ph2.3.13 All 4 Bell states from memory (|Φ+⟩,|Φ-⟩,|Ψ+⟩,|Ψ-⟩)
+- [ ] Ph2.3.14 Read ⟨ψ(θ)|Ĥ|ψ(θ)⟩ — explain EVERY symbol
+- [ ] Ph2.3.15 Final Dirac exam: |ψ⟩=(√3/2)|0⟩+(1/2)e^(iπ/4)|1⟩
+  - [ ]   Write ⟨ψ|
+  - [ ]   Compute ⟨ψ|ψ⟩ = 1 (normalization check)
+  - [ ]   Compute ⟨Z⟩ = 1/2
+  - [ ]   Compute P(|0⟩) = 3/4
+  - [ ]   Compute ⟨X⟩ = √6/4 ≈ 0.612
+  - [ ]   Verify all in NumPy to 10 decimal places
+- [ ] Ph2.3 GATE — passed ✓
+
+---
+
+## ⭐ MASTER SIGN-OFF — PART 2
+
+- [ ] All 6 physics module gates passed (Ph1.1→Ph2.3)
+- [ ] Can write TDSE and TISE from memory
+- [ ] All 6 quantum postulates listed from memory
+- [ ] Can prove |Φ+⟩ is entangled (cannot factor proof)
+- [ ] All 4 Bell states written from memory
+- [ ] Final Dirac exam: ⟨Z⟩=1/2, ⟨X⟩=√6/4, P(|0⟩)=3/4 verified
+- [ ] **READY FOR PHASE 2 — QUANTUM COMPUTING THEORY 🚀**
