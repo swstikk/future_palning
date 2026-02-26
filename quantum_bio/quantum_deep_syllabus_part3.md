@@ -421,6 +421,64 @@ QC1.4.3  Why VQE Needs Entanglement
     Classical HF can't capture ring current, resonance stabilization properly
     Quantum simulation → correct reaction energies for DNA interstrand crosslinks
 
+
+QC1.4.4  Quantum Teleportation — Entanglement in Action
+├── Goal: transfer |ψ⟩ from Alice to Bob using 1 shared Bell pair + 2 classical bits
+│   NO physical qubit is transported — only the STATE is transferred!
+│
+├── Protocol step-by-step:
+│   Step 0: Alice and Bob share |Φ+⟩ = (1/√2)(|00⟩+|11⟩)
+│   Step 1: Alice has unknown |ψ⟩ = α|0⟩+β|1⟩. Total 3-qubit state:
+│           |ψ⟩⊗|Φ+⟩ = (α|0⟩+β|1⟩)⊗(1/√2)(|00⟩+|11⟩)
+│   Step 2: Alice applies CNOT(her ψ qubit → her Bell qubit)
+│   Step 3: Alice applies H to her ψ qubit
+│   Step 4: Alice measures both her qubits → gets 2 classical bits (m₁m₂)
+│   Step 5: Alice sends m₁m₂ to Bob (classical channel)
+│   Step 6: Bob applies corrections:
+│           If m₂=1: apply X.  If m₁=1: apply Z.
+│           Bob now has |ψ⟩ = α|0⟩+β|1⟩ exactly! ✓
+│
+├── Why this matters:
+│   1) Proves entanglement is a RESOURCE (consumed in teleportation)
+│   2) Foundation of quantum networks and quantum repeaters
+│   3) No information travels faster than light (needs classical bits!)
+│
+├── Code:
+│   qc = QuantumCircuit(3, 2)
+│   # Create Bell pair between q1 and q2 (Alice's and Bob's)
+│   qc.h(1); qc.cx(1, 2)
+│   # Alice's unknown state on q0 (e.g., Ry(π/3)|0⟩)
+│   qc.ry(np.pi/3, 0)
+│   qc.barrier()
+│   # Teleportation protocol
+│   qc.cx(0, 1)   # CNOT: q0→q1
+│   qc.h(0)        # H on q0
+│   qc.measure(0, 0); qc.measure(1, 1)  # Alice measures
+│   # Bob's corrections (classically controlled)
+│   qc.x(2).c_if(1, 1)   # if m₂=1: X on Bob
+│   qc.z(2).c_if(0, 1)   # if m₁=1: Z on Bob
+│   # q2 now holds |ψ⟩!
+│
+└── Exit check: teleport Ry(π/4)|0⟩ and verify Bob's qubit matches.
+
+QC1.4.5  Superdense Coding — Sending 2 Classical Bits via 1 Qubit
+├── Reverse of teleportation: send 2 classical bits using 1 shared Bell pair
+│   Alice encodes: 00→I, 01→X, 10→Z, 11→XZ on her qubit
+│   Sends her qubit to Bob
+│   Bob applies CNOT+H and measures → gets 2 bits
+│
+├── Code:
+│   qc = QuantumCircuit(2, 2)
+│   qc.h(0); qc.cx(0, 1)   # Bell pair
+│   # Alice wants to send "10": applies Z
+│   qc.z(0)
+│   # Bob decodes
+│   qc.cx(0, 1); qc.h(0)
+│   qc.measure([0,1], [0,1])
+│   # Should get '10' with 100% probability
+│
+└── Exit check: encode and decode all 4 messages (00,01,10,11). Verify each.
+
 ═══════════════════════════════════════════
  GATE TO C2.x — Do NOT proceed until ALL boxes checked:
 ═══════════════════════════════════════════
@@ -429,10 +487,89 @@ QC1.4.3  Why VQE Needs Entanglement
  □ Know all 4 Bell states from memory with circuits
  □ VQE needs entanglement for electron correlation
  □ Hartree-Fock misses correlation energy → VQE fixes this
+ □ Teleportation: can explain 6-step protocol and code it
+ □ Superdense coding: encode/decode all 4 messages
 ═══════════════════════════════════════════
 ```
 
 ---
+
+---
+
+## Module QC1.5: NISQ Noise & Error Mitigation
+
+> **PREREQUISITES: QC1.4 gate passed.**
+> This is what makes real quantum computing HARD. Simulators are noise-free;
+> real hardware is noisy. Every VQE run on real IBM hardware needs these techniques.
+
+```
+QC1.5.1  What is NISQ?
+├── NISQ = Noisy Intermediate-Scale Quantum
+│   "Noisy": every gate has ~0.1-1% error; qubits decohere in ~100μs
+│   "Intermediate-Scale": 50-1000 qubits (not enough for error correction)
+│   "Quantum": still quantum — can do things classical can't (maybe)
+│
+├── Error sources:
+│   ┌─────────────────┬──────────────────────────────────────┐
+│   │ Error type       │ What happens                         │
+│   ├─────────────────┼──────────────────────────────────────┤
+│   │ Gate error       │ Rotation angle slightly wrong         │
+│   │ Decoherence (T1) │ Qubit spontaneously decays |1⟩→|0⟩  │
+│   │ Dephasing (T2)   │ Phase information lost randomly       │
+│   │ Readout error    │ Measure |0⟩ but get "1" (~1-2%)      │
+│   │ Crosstalk        │ Gate on qubit A affects qubit B       │
+│   └─────────────────┴──────────────────────────────────────┘
+│
+├── Impact on VQE:
+│   Noisy ⟨H⟩ → optimizer converges to WRONG energy
+│   More gates = more noise accumulated → shallow circuits preferred
+│   IBM Heron (2024): T1≈300μs, 2-qubit error≈0.5%, max ~50 useful qubits
+│
+└── Rule: circuit depth × error_rate < 1, otherwise results are garbage
+
+QC1.5.2  Error Mitigation Techniques (NOT error correction!)
+├── Readout Error Mitigation:
+│   Problem: measure |0⟩ but hardware says "1" sometimes
+│   Fix: calibrate confusion matrix M, then apply M⁻¹ to raw counts
+│   Code:
+│   from qiskit_ibm_runtime import QiskitRuntimeService
+│   # Calibration circuits measure |00...0⟩ and |11...1⟩
+│   # Build M from calibration data, invert, apply to results
+│
+├── Zero-Noise Extrapolation (ZNE):
+│   Idea: run circuit at noise levels 1x, 2x, 3x → extrapolate to 0x noise
+│   How to increase noise: insert identity pairs (CNOT·CNOT=I) → same logic, more noise
+│   Extrapolate: fit polynomial to (noise_level, energy) → evaluate at noise=0
+│   Best for: VQE energy estimation
+│
+├── Pauli Twirling:
+│   Converts coherent errors → stochastic errors (easier to handle)
+│   Insert random Pauli gates before/after each CNOT, undo on other side
+│   Average over many random choices → symmetric noise
+│
+├── Dynamical Decoupling:
+│   Insert X pulses during idle times to refocus dephasing
+│   Like a quantum echo — cancels slow noise
+│   qc.add_calibration('dd', ...)  # Qiskit transpiler can auto-add
+│
+└── Exit check:
+    Run VQE for H=Z on FakeWashingtonV2 (noisy sim):
+    1. Without mitigation → energy ≈ -0.85 (should be -1.0)
+    2. With readout mitigation → energy ≈ -0.95
+    3. Observe the improvement.
+
+═══════════════════════════════════════════
+ GATE TO C2.x — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know: NISQ = noisy, 50-1000 qubits, no error correction
+ □ Know 5 error sources: gate, T1, T2, readout, crosstalk
+ □ Know: circuit depth × error_rate must be < 1
+ □ Know readout mitigation: calibrate confusion matrix → invert
+ □ Know ZNE: run at 1x,2x,3x noise → extrapolate to 0x
+ □ Know Pauli twirling and dynamical decoupling concepts
+ □ Ran noisy VQE with and without mitigation → saw improvement
+═══════════════════════════════════════════
+```
 
 ## Module C2.1-C2.3: Qiskit — From Basics to Parameterized Circuits
 
@@ -513,6 +650,52 @@ C2.3  Parameterized Circuits — The Core of VQE
     # Minimize cos(θ) → θ=π → |ψ(π)⟩=|1⟩, ⟨Z⟩=-1 ✓
     # THIS IS VQE LOGIC IN ITS SIMPLEST FORM
 
+
+C2.4  Real IBM Hardware Access — Running on Actual Quantum Computers
+├── IBM Quantum account setup:
+│   1. Create account: quantum.ibm.com
+│   2. Get API token from dashboard
+│   3. Save token:
+│      from qiskit_ibm_runtime import QiskitRuntimeService
+│      QiskitRuntimeService.save_account(channel="ibm_quantum", token="YOUR_TOKEN")
+│
+├── Choosing a backend:
+│   service = QiskitRuntimeService()
+│   backends = service.backends()
+│   # Filter by qubit count and queue length
+│   backend = service.least_busy(min_num_qubits=4)
+│   print(backend.name, backend.num_qubits)
+│
+├── Transpilation — matching circuit to hardware:
+│   from qiskit import transpile
+│   # Hardware has limited connectivity (not all qubits connect)
+│   qc_transpiled = transpile(qc, backend=backend, optimization_level=3)
+│   # optimization_level: 0=none, 1=light, 2=medium, 3=heavy (best for VQE)
+│   print(f"Depth: {qc_transpiled.depth()}, CNOTs: {qc_transpiled.count_ops().get('cx',0)}")
+│
+├── Running on real hardware:
+│   from qiskit_ibm_runtime import EstimatorV2, SamplerV2
+│   estimator = EstimatorV2(backend)
+│   job = estimator.run([(qc_transpiled, hamiltonian)])
+│   result = job.result()
+│   # WARNING: job may queue for minutes/hours depending on traffic
+│
+├── Key differences from simulator:
+│   ┌──────────────────┬────────────────┬─────────────────┐
+│   │                   │ Simulator       │ Real Hardware    │
+│   ├──────────────────┼────────────────┼─────────────────┤
+│   │ Speed             │ Instant         │ Mins-hours queue │
+│   │ Noise             │ None (default)  │ Always present   │
+│   │ Max qubits        │ ~30 (RAM)       │ 127-1000+        │
+│   │ Gate set          │ Any             │ Native only      │
+│   │ Connectivity      │ All-to-all      │ Limited topology │
+│   └──────────────────┴────────────────┴─────────────────┘
+│
+└── Exit check:
+    Run Bell state circuit on real IBM hardware.
+    Compare counts {'00':~50%, '11':~50%} with error ~2-5%.
+    Observe noise vs perfect simulator result.
+
 ═══════════════════════════════════════════
  GATE TO QC2.1 — Do NOT proceed until ALL boxes checked:
 ═══════════════════════════════════════════
@@ -522,6 +705,9 @@ C2.3  Parameterized Circuits — The Core of VQE
  □ Used assign_parameters() to bind values
  □ Know parameter-shift: ∂E/∂θ = [E(θ+π/2)-E(θ-π/2)]/2
  □ Mini VQE: H=Z, ansatz=Ry(θ), θ=π gives ⟨Z⟩=-1
+ □ Set up IBM Quantum account + saved API token
+ □ Transpiled circuit for real backend (optimization_level=3)
+ □ Ran Bell state on real hardware and observed noise
 ═══════════════════════════════════════════
 ```
 
@@ -622,6 +808,76 @@ QC2.1.3  Classical Optimizers in VQE
 
 ---
 
+## Module QC3.0: Deutsch-Jozsa Algorithm — First Quantum Speedup
+
+> **PREREQUISITES: QC2.1 gate passed.**
+> This is historically the FIRST algorithm proving quantum > classical.
+> Understand this before Grover — it introduces oracle + interference pattern.
+
+```
+QC3.0.1  The Problem — Constant vs Balanced
+├── Given: a function f:{0,1}ⁿ→{0,1}
+│   CONSTANT: f(x)=0 for ALL x, or f(x)=1 for ALL x
+│   BALANCED: f(x)=0 for exactly HALF of inputs, 1 for the other half
+│   PROMISE: f is either constant OR balanced (nothing else)
+│   TASK: determine which one
+│
+├── Classical: worst case need 2ⁿ/2+1 queries (check >half the inputs)
+│   For n=10: up to 513 evaluations
+│   Quantum: Deutsch-Jozsa needs EXACTLY 1 query!  (exponential speedup)
+│
+└── This is the canonical "quantum computers CAN be faster" proof
+
+QC3.0.2  The Algorithm — Step by Step
+├── Circuit:
+│   |0⟩⊗ⁿ|1⟩ → H⊗(n+1) → Uf (oracle) → H⊗ⁿ (on first n qubits) → Measure
+│
+├── WORKED for n=2:
+│   Step 1: Start with |00⟩|1⟩ = |001⟩
+│   Step 2: Apply H⊗³ → uniform superposition ⊗ |-⟩ on ancilla
+│   Step 3: Apply oracle Uf:
+│           Uf|x⟩|-⟩ = (-1)^f(x)|x⟩|-⟩  (phase kickback!)
+│           If CONSTANT (f=0): all phases same → H brings back to |00⟩
+│           If BALANCED: phases cancel → H gives non-|00⟩ → some qubit = 1
+│   Step 4: Measure first n qubits
+│           ALL zeros → CONSTANT
+│           ANY non-zero → BALANCED
+│
+├── Why it works: INTERFERENCE
+│   Constant f → all amplitudes interfere constructively at |0...0⟩
+│   Balanced f → amplitudes at |0...0⟩ cancel to zero (destructive)
+│
+├── Code (2-qubit, balanced oracle f(x)=x₁ XOR x₂):
+│   qc = QuantumCircuit(3, 2)  # 2 input qubits + 1 ancilla
+│   qc.x(2); qc.barrier()     # ancilla to |1⟩
+│   qc.h([0,1,2])             # Step 2: superposition
+│   qc.barrier()
+│   # Oracle for f(x)=x₁⊕x₂ (balanced):
+│   qc.cx(0, 2); qc.cx(1, 2)
+│   qc.barrier()
+│   qc.h([0,1])               # Step 4: H on input qubits only
+│   qc.measure([0,1], [0,1])
+│   # Result: NOT '00' → balanced ✓
+│
+└── Exit check:
+    1. Build constant oracle (f=0): just identity. Should measure '00'.
+    2. Build balanced oracle (f=x₀): CNOT(0,2). Should measure non-'00'.
+    3. Verify both in Qiskit with 1000 shots.
+
+═══════════════════════════════════════════
+ GATE TO QC3.1 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know the constant vs balanced promise problem
+ □ Classical needs 2ⁿ/2+1 queries; Deutsch-Jozsa needs 1
+ □ Know phase kickback: Uf|x⟩|-⟩ = (-1)^f(x)|x⟩|-⟩
+ □ Constant → all-zeros measurement; balanced → non-zero
+ □ Coded both constant and balanced oracles, verified
+ □ Understand: interference (constructive/destructive) is the engine
+═══════════════════════════════════════════
+```
+
+---
+
 ## Module QC3.1: Grover's Algorithm
 
 ```
@@ -691,16 +947,142 @@ QC3.1.4  BIO Application — Genomic k-mer Search
     Loading the database into superposition is itself an O(N) operation
     Quantum advantage only realized if QRAM loading is efficient
 
+
+---
+
+## Module QC3.2: Quantum Fourier Transform (QFT)
+
+> **PREREQUISITES: QC3.1 gate passed.**
+> QFT is the quantum version of the classical Discrete Fourier Transform.
+> It's the ENGINE inside Shor's algorithm and QPE.
+
+```
+QC3.2.1  What QFT Does
+├── Classical DFT: converts time-domain → frequency-domain  (O(N log N) = FFT)
+│   Quantum QFT: same transformation on quantum amplitudes  (O(n²) gates, n=log₂N)
+│
+├── Definition: QFT|j⟩ = (1/√N) Σₖ e^(2πijk/N) |k⟩
+│   Maps computational basis → Fourier basis
+│   N=2ⁿ amplitudes transformed using only O(n²) gates!
+│
+├── For n=1: QFT = H (Hadamard IS the 1-qubit Fourier transform!)
+│   For n=2: QFT = H⊗I · controlled-phase(π/2) · I⊗H · SWAP
+│
+├── Circuit structure (n qubits):
+│   For each qubit j (from top to bottom):
+│     1. Apply H to qubit j
+│     2. Apply controlled-Rk gates from qubits j+1,...,n-1
+│        where Rk = phase gate with angle 2π/2^k
+│   3. Reverse qubit order (SWAP gates)
+│
+└── Code:
+    from qiskit.circuit.library import QFT
+    qft = QFT(num_qubits=3)
+    qft.decompose().draw('mpl')
+
+QC3.2.2  Why QFT Matters
+├── Inside Shor's algorithm: QFT finds the PERIOD of modular exponentiation
+│   Period finding → factoring → breaks RSA encryption
+│   (We won't implement Shor fully, but understanding QFT is essential)
+│
+├── Inside QPE: QFT converts phase information → binary representation
+│   QPE uses INVERSE QFT at the end to read out the phase
+│
+└── Exit check:
+    Build 3-qubit QFT circuit manually (H + controlled-phase gates + SWAPs).
+    Apply to |101⟩ and verify output matches Qiskit's QFT library.
+
+═══════════════════════════════════════════
+ GATE TO QC3.3 — Do NOT proceed until ALL boxes checked:
+═══════════════════════════════════════════
+ □ Know: QFT = quantum version of DFT; O(n²) gates vs O(N log N) classical
+ □ Know: 1-qubit QFT = Hadamard
+ □ Can describe QFT circuit: H + controlled-Rk + SWAPs
+ □ Know: QFT is inside Shor's and QPE
+ □ Built 3-qubit QFT circuit in Qiskit
+═══════════════════════════════════════════
+```
+
+---
+
+## Module QC3.3: Quantum Phase Estimation (QPE)
+
+> **PREREQUISITES: QC3.2 gate passed.**
+> QPE estimates eigenvalues of unitary operators.
+> For quantum chemistry: QPE gives EXACT ground state energy (unlike VQE which approximates).
+> VQE is for NISQ (noisy, now); QPE is for fault-tolerant (clean, future).
+
+```
+QC3.3.1  The Problem QPE Solves
+├── Given: unitary U with eigenvector |u⟩ and eigenvalue e^(2πiφ)
+│   TASK: estimate the phase φ (a number between 0 and 1)
+│
+├── Why this matters for chemistry:
+│   Hamiltonian H has ground state |E₀⟩ with energy E₀
+│   U = e^(-iHt) is unitary with eigenvalue e^(-iE₀t)
+│   QPE extracts E₀ from the phase! → exact ground state energy
+│   VQE: approximate E₀ (good for NISQ)
+│   QPE: exact E₀ (needs fault-tolerant QC → future)
+│
+└── Precision: t ancilla qubits → phase accuracy 1/2^t
+
+QC3.3.2  The Algorithm
+├── Circuit:
+│   t ancilla qubits (initialized |0⟩) + eigenstate register |u⟩
+│   Step 1: H⊗t on ancillas (create superposition)
+│   Step 2: Controlled-U^(2^k) from ancilla k to eigenstate
+│   Step 3: Inverse QFT on ancillas
+│   Step 4: Measure ancillas → binary representation of φ
+│
+├── WORKED for 1-ancilla:
+│   U = Z (eigenvalues ±1 → phases 0 and 0.5)
+│   |u⟩ = |1⟩ (eigenvalue -1 = e^(2πi·0.5) → phase = 0.5)
+│   QPE should return |1⟩ on ancilla (binary 0.1₂ = 0.5)
+│
+├── Code:
+│   from qiskit.circuit.library import PhaseEstimation
+│   import numpy as np
+│   # Estimate phase of Z gate acting on |1⟩
+│   Z_gate = QuantumCircuit(1); Z_gate.z(0)
+│   qpe = PhaseEstimation(num_evaluation_qubits=3, unitary=Z_gate.to_gate())
+│   # Prepend: set eigenstate to |1⟩
+│   full = QuantumCircuit(4, 3)
+│   full.x(3)  # eigenstate = |1⟩
+│   full.compose(qpe, inplace=True)
+│   full.measure(range(3), range(3))
+│   # Should measure '100' (binary 0.100 = 0.5 → phase = 0.5)
+│
+└── Exit check:
+    1. QPE on Z with |1⟩: should get phase=0.5 (energy eigenvalue = -1)
+    2. QPE on T gate (phase=1/8): should get binary 0.001 with 3 ancillas
+    3. Understand: more ancilla qubits → higher precision
+
+═══════════════════════════════════════════
+ GATE COMPLETE — QC3.3 checked:
+═══════════════════════════════════════════
+ □ Know: QPE estimates eigenvalue phase of unitary U
+ □ Know: chemistry use: U=e^(-iHt) → extracts E₀
+ □ Know: VQE = NISQ approximate; QPE = fault-tolerant exact
+ □ Know circuit: H ancillas → controlled-U^2k → inverse QFT → measure
+ □ Ran QPE on Z gate → phase=0.5 verified
+ □ Know: t ancilla qubits → precision 1/2^t
+═══════════════════════════════════════════
+```
+
 ═══════════════════════════════════════════
  ⭐ MASTER QC GATE — PART 3 COMPLETE ⭐
 ═══════════════════════════════════════════
  □ QC1.1: Qubit states, Bloch sphere, phase
  □ QC1.2: All gates, universal set, CNOT
  □ QC1.3: Measurement, basis rotation, expectation
- □ QC1.4: Entanglement, Bell states
- □ C2.x: Qiskit, simulators, parameterized circuits
+ □ QC1.4: Entanglement, Bell states, teleportation, superdense coding
+ □ QC1.5: NISQ noise, error mitigation (ZNE, readout, twirling)
+ □ C2.x: Qiskit, simulators, parameterized circuits, real hardware
  □ QC2.1: Variational principle, ansatz, optimizers
+ □ QC3.0: Deutsch-Jozsa (constant vs balanced, 1 query)
  □ QC3.1: Grover oracle, diffuser, bio app
+ □ QC3.2: Quantum Fourier Transform
+ □ QC3.3: Quantum Phase Estimation (exact eigenvalues)
 ═══════════════════════════════════════════
 ```
 
@@ -779,12 +1161,63 @@ QC3.1.4  BIO Application — Genomic k-mer Search
 
 ---
 
+
+## QC1.4 (Extended) Teleportation + Superdense
+- [ ] Teleportation 6-step protocol — explain and code
+- [ ] Superdense coding: encode/decode 00,01,10,11
+- [ ] QC1.4 Extended GATE ✓
+
+## QC1.5 NISQ Noise
+- [ ] NISQ definition: noisy, 50-1000 qubits
+- [ ] 5 error sources: gate, T1, T2, readout, crosstalk
+- [ ] depth × error_rate < 1 rule
+- [ ] Readout error mitigation (confusion matrix)
+- [ ] Zero-noise extrapolation (ZNE)
+- [ ] Pauli twirling concept
+- [ ] Dynamical decoupling concept
+- [ ] Noisy VQE run with vs without mitigation
+- [ ] QC1.5 GATE ✓
+
+## C2.4 Real Hardware
+- [ ] IBM Quantum account + API token
+- [ ] Transpilation with optimization_level=3
+- [ ] Run Bell state on real hardware
+- [ ] Compare noisy real vs perfect simulator
+- [ ] C2.4 GATE ✓
+
+## QC3.0 Deutsch-Jozsa
+- [ ] Constant vs balanced problem
+- [ ] Classical 2^(n-1)+1 vs quantum 1 query
+- [ ] Phase kickback: Uf|x⟩|-⟩ = (-1)^f(x)|x⟩|-⟩
+- [ ] All-zeros = constant; non-zero = balanced
+- [ ] Code constant + balanced oracles
+- [ ] QC3.0 GATE ✓
+
+## QC3.2 QFT
+- [ ] QFT = quantum DFT; O(n²) gates
+- [ ] 1-qubit QFT = Hadamard
+- [ ] Circuit: H + controlled-Rk + SWAPs
+- [ ] QFT inside Shor's and QPE
+- [ ] Built 3-qubit QFT
+- [ ] QC3.2 GATE ✓
+
+## QC3.3 QPE
+- [ ] QPE estimates eigenvalue phase of U
+- [ ] Chemistry: U=e^(-iHt) → extracts E₀
+- [ ] VQE = NISQ approx; QPE = exact (future)
+- [ ] Circuit: H→controlled-U^2k→inv QFT→measure
+- [ ] QPE on Z gate → phase=0.5
+- [ ] Precision: t ancillas → 1/2^t
+- [ ] QC3.3 GATE ✓
+
 ## ⭐ MASTER SIGN-OFF — PART 3
 
-- [ ] All 7 module gates passed
-- [ ] Can build circuits in Qiskit
+- [ ] All 11 module gates passed (QC1.1→QC3.3)
+- [ ] Can build circuits in Qiskit + ran on real IBM hardware
 - [ ] Mini VQE + full VQE completed
-- [ ] Grover coded and tested
+- [ ] Deutsch-Jozsa + Grover coded and tested
+- [ ] QFT + QPE understood and coded
+- [ ] Know NISQ noise + error mitigation
 - [ ] **READY FOR PART 4 — QUANTUM CHEMISTRY 🚀**
 
 ---
@@ -800,14 +1233,20 @@ graph TD
     QC13 --> QC14["QC1.4: Entanglement"]
     QC14 --> C2["C2.x: Qiskit"]
     C2 --> QC21["QC2.1: VQE"]
-    QC21 --> QC31["QC3.1: Grover"]
+    QC14 --> QC15["QC1.5: NISQ Noise"]
+    QC15 --> C2["C2.x: Qiskit + Hardware"]
+    C2 --> QC21["QC2.1: VQE"]
+    QC21 --> QC30["QC3.0: Deutsch-Jozsa"]
+    QC30 --> QC31["QC3.1: Grover"]
+    QC31 --> QC32["QC3.2: QFT"]
+    QC32 --> QC33["QC3.3: QPE"]
     
     QC12 -.->|"CNOT creates"| QC14
-    QC13 -.->|"basis rotation"| QC21
+    QC15 -.->|"noise model"| C2
     QC14 -.->|"correlation"| QC21
-    C2 -.->|"param circuits"| QC21
+    QC32 -.->|"engine for"| QC33
     
-    QC21 --> P4["Part 4: Quantum Chemistry"]
+    QC33 --> P4["Part 4: Quantum Chemistry"]
     QC31 --> BIO["BIO: k-mer Search"]
     
     style P1 fill:#2d6a4f,color:#fff
@@ -818,7 +1257,11 @@ graph TD
     style QC14 fill:#457b9d,color:#fff
     style C2 fill:#e76f51,color:#fff
     style QC21 fill:#f4a261,color:#000
+    style QC15 fill:#457b9d,color:#fff
+    style QC30 fill:#e9c46a,color:#000
     style QC31 fill:#e9c46a,color:#000
+    style QC32 fill:#e9c46a,color:#000
+    style QC33 fill:#e9c46a,color:#000
     style P4 fill:#264653,color:#fff
     style BIO fill:#2a9d8f,color:#fff
 ```
